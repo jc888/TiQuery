@@ -1,54 +1,15 @@
+/**
+ * Created with IntelliJ IDEA.
+ * User: jameschow
+ * Date: 04/03/2013
+ * Time: 10:28
+ * To change this template use File | Settings | File Templates.
+ */
+define(function(require, exports, module) {
 
-(function(window,document,Backbone,_,undefined){
+    var _ = require('alloy/underscore'), Backbone = require('alloy/backbone');
 
-    var _holder = {};
-
-    function onBChain(event){
-        updateElement.call(this,this.getComposed()());
-    }
-
-    function updateElement(val){
-        var element = document.getElementById(_holder[this].selector);
-        element.innerHTML = val
-    }
-
-    window.tQuery = tQuery = function(selector,context){
-        return new TQuery(selector,context);
-    }
-
-    var TQuery = function (selector, context){
-        return TQuery.fn.init(selector,context);
-    };
-
-    TQuery.fn = TQuery.prototype = {
-        init:function (selector, context){
-            _holder[this] = {};
-            _holder[this].selector = selector;
-            _holder[this].chainHandler = {
-                chains:[],
-                attachChain:function(chain){
-                    this.chains.push(chain);
-                    chain.attachListeners();
-                    chain.on('all',onBChain,chain);
-                }
-            }
-            return this;
-        },
-        addBChain:function(chain){
-            _holder[this].chainHandler.attachChain(chain);
-            return this;
-        },
-        setter:function(){
-            return _.bind(updateElement,this);
-        }
-    }
-
-})(this, this.document, Backbone, _);
-
-
-(function(window,document,Backbone,_,undefined){
-
-    var _chain = {};
+    var _internal = {};
 
     var chainStorage = {
         PropertyWatcher:function(property,model) {
@@ -161,23 +122,32 @@
         }
     }
 
-    window.bChain = bChain = function(eventedModel){
-        var context = this;
-        return new BChain(eventedModel,context);
+    var ChainHandler = function() {
+        var chain = [];
+        this.addWatcher = function(watcher){
+            chain.unshift(watcher);
+        }
+        this.getPartials = function() {
+            return _.pluck(chain, 'partial');
+        }
+        this.getChain = function(){
+            return chain;
+        }
     }
 
-    var BChain = function (eventedModel, context){
-        _chain[this] = [];
+    var BackboneChain = function (eventedModel, context){
 
-        return BChain.fn.init(eventedModel,context);
+        return new BackboneChain.fn.init(eventedModel,context);
     };
 
-    BChain.fn = BChain.prototype = {
+    BackboneChain.fn = BackboneChain.prototype = {
+        uuid:'',
         init:function (eventedModel, context){
 
             //making this an observable
             _.extend(this, Backbone.Events);
 
+            _internal[this.uuid] = new ChainHandler();
 
             if (eventedModel instanceof Backbone.Collection){
                 //see if we are starting with a collection
@@ -195,52 +165,70 @@
             return this;
         },
         collection:function(collection){
+            var chainHandler = _internal[this.uuid];
             if (collection instanceof Backbone.Collection){
-                _chain[this].unshift(new CollectionWatcher(collection));
+                chainHandler.addWatcher(new CollectionWatcher(collection));
             }
             return this;
         },
         model:function(model){
+            var chainHandler = _internal[this.uuid];
+
             if (model instanceof Backbone.Model){
-                _chain[this].unshift(new ModelWatcher(model));
+                chainHandler.addWatcher(new ModelWatcher(model));
             }
             return this;
         },
         get:function(property){
+            var chainHandler = _internal[this.uuid];
+
             if (_.isString(property)){
-                _chain[this].unshift(new PropertyWatcher(property));
+                chainHandler.addWatcher(new PropertyWatcher(property));
             }
             return this;
         },
         at:function(index){
+            var chainHandler = _internal[this.uuid];
+
             if (_.isNumber(index)){
-                _chain[this].unshift(new IndexWatcher(index));
+                chainHandler.addWatcher(new IndexWatcher(index));
             }
             return this;
         },
         transform:function(transform){
+            var chainHandler = _internal[this.uuid];
+
             if (_.isFunction(transform)){
-                _chain[this].unshift(new TransformWatcher(transform));
+                chainHandler.addWatcher(new TransformWatcher(transform));
             }
             return this;
         },
         brokenChainEndValue:function(emptyValue){
-            _chain[this].unshift(new EmptyTransformWatcher(emptyValue))
+            var chainHandler = _internal[this.uuid];
+
+            chainHandler.addWatcher(new EmptyTransformWatcher(emptyValue))
             return this;
         },
         getComposed:function(){
-            var partials = _.pluck(_chain[this], 'partial');
+            var chainHandler = _internal[this.uuid];
+
+            var partials = chainHandler.getPartials()
 
             return _.compose.apply(this,partials);
         },
         attachListeners:function(){
-            eventHandler.attachListeners(_chain[this],this);
+            var chainHandler = _internal[this.uuid];
+
+            eventHandler.attachListeners(chainHandler.getChain(),this);
             return this;
+        },
+        getValue:function(){
+            return this.getComposed()();
         },
         query:function(query,context){
             var list = query.split(".");
             var self = this;
-            _.each(list,function(item,idx){
+            _.each(list, function(item,idx){
                 var variableName = item;
                 var atSymbol = /[\d+]/.exec(item);
                 if (!_.isNull(atSymbol)){
@@ -265,18 +253,15 @@
         }
     }
 
-})(this, this.document, Backbone, _);
+    BackboneChain.fn.init.prototype = BackboneChain.fn;
 
-var library = new Backbone.Collection([{name:'feersum',author:'banks'}]);
+    var backboneChain = function (eventedModel){
 
-//var authored = bChain(library).at(2).get("author").brokenChainEndValue('').getComposed();
-//bChain(library).at(2).get('name').transform(function(item){return item+" "+authored()}).on('all');
-//bChain().query('library[2].addresses[1].street',this);
-tQuery('output').addBChain(bChain('library[2].addresses[0].street').brokenChainEndValue('cannot find'));
+        var context = this;
 
-setTimeout(function(){
-    library.add({name:'use of weapons',author:'banks'});
-},1000);
-setTimeout(function(){
-    library.add({name:'state of the art',author:'banks',addresses:[{street:'unicorn road'}]});
-},2000);
+        return new BackboneChain.fn.init(eventedModel,context);
+    };
+
+    module.exports = backboneChain;
+
+});
