@@ -21,15 +21,16 @@ requirejs.config({
 
 
 requirejs(['alloy/backbone','ThirdPartyLibs/AlloyBind','ThirdPartyLibs/BackboneChain'],
-    function   (Backbone,        alloyBind,   backboneChain) {
+    function   (Backbone,        AlloyBind,   BackboneChain) {
         library = new Backbone.Collection([{name:'feersum',author:'banks'}]);
         this.library = library;
         //var authored = bChain(library).at(2).get("author").brokenChainEndValue('').getComposed();
         //bChain(library).at(2).get('name').transform(function(item){return item+" "+authored()}).on('all');
         //bChain().query('library[2].addresses[1].street',this);
 
-        var ab = alloyBind;
-        var bc = backboneChain;
+        var ab = AlloyBind.factory
+        var bc = BackboneChain.factory;
+
         var updateOutput = function(value){document.getElementById('output').innerHTML=value};
 
         ab(updateOutput)
@@ -37,7 +38,7 @@ requirejs(['alloy/backbone','ThirdPartyLibs/AlloyBind','ThirdPartyLibs/BackboneC
             .addChain(bc('library[2].addresses[0].postcode'))
             .fulfilled(function(value){document.getElementById('output2').innerHTML=value});
 
-        setTimeout(function(){
+        set(function(){
             library.add({name:'use of weapons',author:'banks'});
         },1000);
         setTimeout(function(){

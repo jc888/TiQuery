@@ -24,19 +24,18 @@ define(function(require, exports, module) {
     }
 
     ChainHandler.prototype.getJoinedOutput = function(){
-        var output = '';
-        _.each(this.composeds,function(composed){
-            output += composed();
-        });
-
-        return output;
+        return this.allValues().join(' ');
     }
 
     ChainHandler.prototype.allComplete = function(){
-        return _.every(this.composeds,function(composed){
-            return (!_.isUndefined(composed()))
-        })
+        return !_.some(this.allValues(),_.isUndefined);
     };
+
+    ChainHandler.prototype.allValues = function(){
+        return _.map(this.composeds,function(composed){
+            return composed();
+        })
+    }
 
 
     ChainHandler.prototype.onBChain = function(event){
@@ -58,7 +57,7 @@ define(function(require, exports, module) {
         return new AlloyBind.fn.init(selector,context);
     };
 
-    AlloyBind.fn = AlloyBind.prototype = {
+    AlloyBind.prototype = {
         uuid:undefined,
         init:function (selector, context){
             this.chainHandler = new ChainHandler();
@@ -79,13 +78,17 @@ define(function(require, exports, module) {
         }
     }
 
-    AlloyBind.fn.init.prototype = AlloyBind.fn;
+    AlloyBind.fn = AlloyBind.prototype;
 
-    var alloyBind = function(selector){
-        var context = this;
+    AlloyBind.fn.init.prototype = AlloyBind.prototype;
+
+    AlloyBind.factory = function(selector,context){
+        if (!context){
+            context = this;
+        }
         return new AlloyBind(selector,context);
     }
 
-    module.exports = alloyBind;
+    module.exports = AlloyBind;
 
 });

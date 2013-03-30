@@ -140,7 +140,7 @@ define(function(require, exports, module) {
         return new BackboneChain.fn.init(eventedModel,context);
     };
 
-    BackboneChain.fn = BackboneChain.prototype = {
+    BackboneChain.prototype = {
         uuid:'',
         init:function (eventedModel, context){
 
@@ -253,15 +253,15 @@ define(function(require, exports, module) {
         }
     }
 
+    BackboneChain.fn = BackboneChain.prototype;
     BackboneChain.fn.init.prototype = BackboneChain.fn;
 
-    var backboneChain = function (eventedModel){
-
-        var context = this;
-
-        return new BackboneChain.fn.init(eventedModel,context);
+    BackboneChain.factory = function (eventedModel, context){
+        if (!context){
+            context = this;
+        }
+        return new BackboneChain(eventedModel,context);
     };
 
-    module.exports = backboneChain;
-
+    module.exports = BackboneChain;
 });
